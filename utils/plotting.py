@@ -3,15 +3,33 @@
 '''Plot on the landscape using Plotly'''
 
 import plotly.graph_objects as go
+import numpy as np
 
 #############################################################
 def make_plot(x_vals, y_vals, Z, x_label="X", y_label="Y", z_label="Confidence"):
+    #Normalize Z shape/type
+    x_len, y_len = len(x_vals), len(y_vals)
+    Z = np.asarray(Z, dtype=float)
+
+    if Z.ndim !=2:
+        raise ValueError(f'Z must be 2D, got shape {Z.shape}')
+    
+    if Z.shape == (y_len, x_len):
+        Zp = Z
+    elif Z.shape == (x_len, y_len):
+        Zp = Z.T
+    else:
+        raise ValueError(
+            f"Z shape {Z.shape} is incompatible with x({x_len})/y({y_len}). "
+            "Check how the surface is computed."
+        )
+
     fig = go.Figure(
     data = [
         go.Surface(
             x=x_vals,
             y=y_vals,
-            z=Z,
+            z=Zp,
             colorscale='Viridis',
             colorbar=dict(
                 title='Model Confidence',
