@@ -14,9 +14,9 @@ def make_plot(x_vals, y_vals, Z, x_label="X", y_label="Y", z_label="Confidence")
             z=Z,
             colorscale='Viridis',
             colorbar=dict(
-                title='Model confidence',
-                titleside='right',
-                x=-0.15,  # moves bar to the left
+                title='Model Confidence',
+                #side='right',
+                x=-0.15, 
                 xpad=10,
                 len=0.75
             )

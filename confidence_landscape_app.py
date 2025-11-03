@@ -85,22 +85,30 @@ if "show_welcome" not in st.session_state:
 if st.session_state["show_welcome"]:
     st.info(
         """
-        👋 **Welcome to the Confidence Landscape app**
+        👋 **Welcome to the Confidence Landscape App!**
 
         **How to use it:**
-        1. Pick a model, two perturbations (X/Y), and an image class.
+        1. Pick the following attributes:
+            - Pretrained model
+            - Two perturbations (X/Y axes)
+            - Image class
         2. Pick an image from the preview row.
         3. Press **Run ▶** to generate the surface.
-        4. **Click** any point on the surface
-        5. View the GradCAM of the perturbed image to see where the model 'looked' to make its decision.
+        4. **Click** any point on the 3D plot to run **GradCAM** for that perturbation.
+        5. View the GradCAM of the perturbed image.
+
+        🔁 If you change images or axes, **press Run again** to update.
+
+        ℹ️ Questions? Click the info button for some answers!
+
+        Created by Rebecca Du
         """
     )
     # little "close" button under the info box
-    close_col1, close_col2 = st.columns([0.15, 0.85])
-    with close_col1:
-        if st.button("Close"):
-            st.session_state["show_welcome"] = False
-
+    #close_col1, close_col2 = st.columns([0.15, 0.85])
+    #with close_col1:
+    #    if st.button("Close"):
+    #        st.session_state["show_welcome"] = False
 #############################################################
 #Top control bar
 c_model, c_x, c_y, c_class, c_preview, c_run, c_info = st.columns(
@@ -113,21 +121,29 @@ with c_info:
     with st.popover("ℹ️"):
         st.markdown(
             """
-            **How to use this app**
+            **Q&A**
 
-            1. **Select Model** – pick a pretrained backbone.
-            2. **1st / 2nd Perturbation** – choose the 2 axes for the confidence surface.
-            3. **Select Image Class** – pick the folder of images.
-            4. **Preview images** – click the image to select.
-            5. **Run ▶** – builds the landscape.
-            6. **Click the 3D plot** – to run **GradCAM** for that perturbation.
-            7. Right panel shows:
-               - Base image
-               - Perturbed GradCAM
-               - Legend
-               - Top-3 predictions
-
-            🔁 If you change images or axes, **press Run again** to update.
+            1. What is **GradCAM**? 
+                - **GradCAM** (Gradient-weighted Class Activation Mapping) is a technique that creates a heatmap over an image.
+                - It lets us see where the model 'looks' to reach its classification decision. 
+                - It uses the gradients of the CNN's last convoutional layer to make the visualization.
+            2. What's the difference between the models'?
+                - All of the models have been trained for ImageNet classification 
+                - **ResNet18**: 18-layer CNN using skip connections
+                    - Pros: simple, robust, easy to interpret
+                    - Cons: larger and slower compared to mobile neural networks
+                - **Mobilenet_V3_Large**: designed for mobie devices, uses depthwise separable convolutions
+                    - Pros: lightweight, fast
+                    - Cons: lower accuracy, hard to finetune
+                - **EfficientNet_B0**: balances depth, width, resolution via compound scaling
+                    - Pros: good accuracy-to-compute ratio, scales well
+                    - Cons: harder to understand
+            3. Why these image classes?
+                - **Airplane**: orientation, boundary detection
+                - **Cat**: classic example (also, I like cats!)
+                - **Dalmatian**: black/white pattern detection
+                - **Jaguar**: examine colored pattern detection
+                - **School Bus**: boundary detection
             """,
             unsafe_allow_html=False,
         )
@@ -191,7 +207,7 @@ with c_preview:
         col = cols[i]
         img_path = os.path.join(img_dir, fname)
         img = Image.open(img_path).convert("RGB")
-        col.image(img, use_column_width=True)
+        col.image(img, width='stretch')
 
     #Centered radio buttons under images
     st.markdown(
@@ -252,7 +268,7 @@ with c_run:
         unsafe_allow_html=True,
     )
 
-    run_button = st.button("**Run ▶**", use_container_width=True)
+    run_button = st.button("**Run ▶**", width='stretch')
 #############################################################
 #Load image and preprocess
 # Determine what to actually display (frozen state from last Run)
@@ -454,7 +470,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st.image(base_img, caption="Base image", use_column_width=True)
+            st.image(base_img, caption="Base image", width='stretch')
 
         #Fill this only when user clicks
         with grad_col:
@@ -566,7 +582,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st.image(overlaid, caption="GradCAM overlay", use_column_width=True)
+            st.image(overlaid, caption="GradCAM overlay", width='stretch')
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ----------
         with preds_placeholder.container():
