@@ -100,8 +100,6 @@ if st.session_state["show_welcome"]:
         🔁 If you change images or axes, **press Run again** to update.
 
         ℹ️ Questions? Click the info button for some answers!
-
-        Created by Rebecca Du
         """
     )
     # little "close" button under the info box
@@ -461,7 +459,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st.image(base_img, caption="Base image", use_column_width=True)
+            st.image(base_img, caption="Base image", use_container_width=True)
 
         #Fill this only when user clicks
         with grad_col:
@@ -573,7 +571,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st.image(overlaid, caption="GradCAM overlay", use_column_width=True)
+            st.image(overlaid, caption="GradCAM overlay", use_container_width=True)
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ----------
         with preds_placeholder.container():
