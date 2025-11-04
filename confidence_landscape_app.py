@@ -20,7 +20,7 @@ import streamlit as st
 from streamlit_plotly_events import plotly_events
 from streamlit_image_select import image_select
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from config import(
     MODELS,
@@ -189,66 +189,48 @@ if st.session_state["selected_class"] != image_class:
 if st.session_state["selected_image"] is None and img_files:
     st.session_state["selected_image"] = img_files[0]
 
-#5) Preview images in class (thumbnails with select buttons)
+#5) Preview images in class (clickable tiles)
 with c_preview:
-    st.markdown("**Preview images in the class**")
+    st.markdown("**Pick an image (click a tile)**")
 
-    display_files = img_files[:5]
-    current_sel = st.session_state.get("selected_image")
+    display_files = img_files[:5] # adjust how many to show
+    if not display_files:
+        st.warning("No images found in this class.")
+    else:
+        img_paths = [os.path.join(img_dir, f) for f in display_files]
 
-    #Default selection if none
-    if current_sel not in display_files:
-        current_sel = display_files[0] if display_files else None
-        st.session_state["selected_image"] = current_sel
+        # Default / restore selection
+        current_sel = st.session_state.get("selected_image")
+        if (not current_sel) or (current_sel not in display_files):
+            current_sel = display_files[0]
+            st.session_state["selected_image"] = current_sel
 
-    #Show thumbnails
-    cols = st.columns(len(display_files))
-    for i, fname in enumerate(display_files):
-        col = cols[i]
-        img_path = os.path.join(img_dir, fname)
-        img = Image.open(img_path).convert("RGB")
-        col.image(img, use_column_width=True)
+        # --- Make small, uniform square thumbnails ---
+        # Use center-crop to a square, then resize (e.g., 160x160)
+        THUMB = 128 # smaller tiles
+        thumbs = []
+        for p in img_paths:
+            im = Image.open(p).convert("RGB")
+            # Center-crop to square, then resize
+            sq = ImageOps.fit(im, (THUMB, THUMB),
+                              method=Image.Resampling.LANCZOS,
+                              centering=(0.5, 0.5))
+            thumbs.append(sq)
 
-    #Centered radio buttons under images
-    st.markdown(
-        """
-        <style>
-        /* only touch radios in this preview block */
-        .img-radio-wrap .stRadio > div {
-            display: flex;
-            justify-content: center;
-            gap: 0.35rem;
-        }
-        .img-radio-wrap .stRadio label {
-            flex: 1;
-            max-width: 95px;
-            text-align: center;
-            font-size: 0.68rem;      /* smaller */
-            line-height: 1.0rem;
-            white-space: normal;
-            word-break: break-word;
-            margin-top: 0.25rem;
-        }
-        .img-radio-wrap .stRadio label span {
-            font-size: 0.68rem !important;   /* make sure inner span also shrinks */
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.markdown("<div class='img-radio-wrap'>", unsafe_allow_html=True)
-    selected_fname = st.radio(
-        "",
-        options=display_files,
-        index=display_files.index(current_sel),
-        horizontal=True,
-        label_visibility="collapsed",
-        key="image_radio",
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+        # --- Clickable tiles that return the INDEX (not the image) ---
+        selected_idx = image_select(
+            label="",
+            images=thumbs,
+            captions=display_files,
+            index=display_files.index(current_sel) if current_sel in display_files else 0,
+            use_container_width=False,
+            key=f"imgsel_{image_class}",
+            return_value="index",  # <-- ensures we get an int
+        )
 
-    st.session_state["selected_image"] = selected_fname
-
+        # Safety: only update if we got a valid index
+        if isinstance(selected_idx, int) and 0 <= selected_idx < len(display_files):
+            st.session_state["selected_image"] = display_files[selected_idx]
 #6) Run app
 with c_run:
     # small spacer to push the button down to the image row
@@ -443,6 +425,10 @@ if Z is not None:
 
     # ================= LEFT: 3D SURFACE =================
     with left:
+        st.markdown(
+            f"<h3 style='text-align:center;'>{disp_model_name} Confidence Landscape: <b>{disp_x}</b> vs. <b>{disp_y}</b> vs. Confidence</h3>",
+            unsafe_allow_html=True,
+        )
         fig = make_plot(
             x_vals,
             y_vals,
@@ -466,6 +452,11 @@ if Z is not None:
 
     # ================= RIGHT: IMAGES + LEGEND + PREDS =================
     with right:
+        st.markdown(
+            "<h3 style='text-align:center; font-weight:700;'>Base Image vs. GradCAM</h3>",
+            unsafe_allow_html=True
+            )
+        
         # 1) image row (two columns) – force top alignment
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
