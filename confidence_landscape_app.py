@@ -207,7 +207,7 @@ with c_preview:
         col = cols[i]
         img_path = os.path.join(img_dir, fname)
         img = Image.open(img_path).convert("RGB")
-        col.image(img, width='stretch')
+        col.image(img, use_column_width=True)
 
     #Centered radio buttons under images
     st.markdown(
@@ -268,7 +268,7 @@ with c_run:
         unsafe_allow_html=True,
     )
 
-    run_button = st.button("**Run ▶**", width='stretch')
+    run_button = st.button("**Run ▶**", use_container_width=True)
 #############################################################
 #Load image and preprocess
 # Determine what to actually display (frozen state from last Run)
@@ -470,7 +470,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st.image(base_img, caption="Base image", width='stretch')
+            st.image(base_img, caption="Base image", use_column_width=True)
 
         #Fill this only when user clicks
         with grad_col:
@@ -582,7 +582,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st.image(overlaid, caption="GradCAM overlay", width='stretch')
+            st.image(overlaid, caption="GradCAM overlay", use_column_width=True)
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ----------
         with preds_placeholder.container():
