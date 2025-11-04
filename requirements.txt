@@ -1,31 +1,11 @@
-#Core libraries
-streamlit>=1.29.0
-streamlit-plotly-events>=0.0.6
-streamlit-image-select>=0.5.3
-
-#Deep learning
-torch>=2.0.0
-torchvision>=0.15.0
-numpy>=1.23.0
-
-#Image processing
-Pillow>=9.5.0
-opencv-python>=4.8.0.74
-
-#Plotting
-plotly>=5.18.0
-matplotlib>=3.8.0
-
-#Utilities
-tqdm>=4.66.0
-scipy>=1.11.0
-
-
-# Local utils modules
-# utils.cache
-# utils.landscape
-# utils.plotting
-# utils.perturbations
-# utils.gradcam
-# utils.heatmap_overlay
-# models.model_map
+streamlit==1.50.0
+plotly==5.22.0
+numpy==1.26.4
+pandas==2.2.2
+pillow==10.4.0
+opencv-python-headless==4.11.0.86
+matplotlib==3.9.2
+tqdm==4.66.5
+torchinfo==1.8.0
+streamlit-plotly-events==0.0.6
+streamlit-image-select==0.6.0
