@@ -75,23 +75,75 @@ if "pred_box_html" not in st.session_state:
 #############################################################
 #Initialize page
 st.set_page_config(page_title='Confidence Landscape', layout='wide')
-st.title('**Confidence Landscape**')
 
+#Centering markdown styles
+# Centered layout container for Setup + Image selection
+st.markdown(
+    """
+    <style>
+      /* Center the entire top control area (Setup + Preview) */
+      .center-layout {
+          display: flex;
+          justify-content: center;
+          margin: 0 auto 2rem auto;
+          max-width: 1200px; /* tweak width: 1000–1300 works well */
+      }
+
+      /* Give each side some spacing so they don't cling together */
+      .setup-col, .preview-col {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+      }
+
+      /* Keep controls narrower and centered */
+      .setup-inner {
+          max-width: 420px;
+          width: 100%;
+      }
+
+      /* Keep image preview nice and centered */
+      .preview-inner {
+          max-width: 860px;
+          width: 100%;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+    <style>
+      .stAlert {
+          text-align: center;
+      }
+      .stAlert p, .stAlert ul, .stAlert li {
+          text-align: center;
+          list-style-position: inside;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.title('**Confidence Landscape**')
 #############################################################
 # ---------- one-time welcome message ----------
 if "show_welcome" not in st.session_state:
     st.session_state["show_welcome"] = True
 
 if st.session_state["show_welcome"]:
+    st.markdown("<div class='welcome-box'>", unsafe_allow_html=True)
     st.info(
         """
         👋 **Welcome to the Confidence Landscape App!**
 
-        **How to use it:**
-        1. Pick the following attributes:
-            - Pretrained model
-            - Two perturbations (X/Y axes)
-            - Image class
+        See how perturbations change how different models classify things!
+
+        **Instructions:**
+        1. Complete the Setup.
         2. Pick an image from the preview row.
         3. Press **Run ▶** to generate the surface.
         4. **Click** any point on the 3D plot to run **GradCAM** for that perturbation.
@@ -100,8 +152,6 @@ if st.session_state["show_welcome"]:
         🔁 If you change images or axes, **press Run again** to update.
 
         ℹ️ Questions? Click the info button for some answers!
-
-        Created by Rebecca Du
         """
     )
     # little "close" button under the info box
@@ -109,148 +159,148 @@ if st.session_state["show_welcome"]:
     #with close_col1:
     #    if st.button("Close"):
     #        st.session_state["show_welcome"] = False
+    st.markdown("</div>", unsafe_allow_html=True)
 #############################################################
-#Top control bar
-c_model, c_x, c_y, c_class, c_preview, c_run, c_info = st.columns(
-    [1.1, 1.1, 1.1, 1.1, 2.4, 0.6, 0.25]
+# ------------------ Controls (left) + Preview (right) ------------------
+#Spacers
+spL, col_setup, col_preview, col_run, spR = st.columns(
+    [0.6, 1.0, 1.4, 0.6, 0.6], vertical_alignment="top"
 )
 
-#Info button
-with c_info:
-    st.markdown("<div style='height:0.9rem'></div>", unsafe_allow_html=True)
-    with st.popover("ℹ️"):
-        st.markdown(
-            """
-            **Q&A**
-
-            1. What is **GradCAM**? 
-                - **GradCAM** (Gradient-weighted Class Activation Mapping) is a technique that creates a heatmap over an image.
-                - It lets us see where the model 'looks' to reach its classification decision. 
-                - It uses the gradients of the CNN's last convoutional layer to make the visualization.
-            2. What's the difference between the models'?
-                - All of the models have been trained for ImageNet classification 
-                - **ResNet18**: 18-layer CNN using skip connections
-                    - Pros: simple, robust, easy to interpret
-                    - Cons: larger and slower compared to mobile neural networks
-                - **Mobilenet_V3_Large**: designed for mobie devices, uses depthwise separable convolutions
-                    - Pros: lightweight, fast
-                    - Cons: lower accuracy, hard to finetune
-                - **EfficientNet_B0**: balances depth, width, resolution via compound scaling
-                    - Pros: good accuracy-to-compute ratio, scales well
-                    - Cons: harder to understand
-            3. Why these image classes?
-                - **Airplane**: orientation, boundary detection
-                - **Cat**: classic example (also, I like cats!)
-                - **Dalmatian**: black/white pattern detection
-                - **Jaguar**: examine colored pattern detection
-                - **School Bus**: boundary detection
-            """,
-            unsafe_allow_html=False,
-        )
-
-
-#1) Select model
-with c_model:
+# ---------- (1) SETUP ----------
+with col_setup:
+    st.markdown("<h3 style='text-align:center;'>Setup</h3>", unsafe_allow_html=True)
     model_name = st.selectbox("**Select Model**", MODELS)
 
-#2) Select X axis (1st perturbation)
-all_axes = list(PERTURB_AXES.keys())
-with c_x:
+    all_axes = list(PERTURB_AXES.keys())
     x_axis = st.selectbox("**1st Perturbation (X-Axis)**", all_axes, index=0)
-    
-#3) Select Y axis (2nd perturbation) – must be different from X
-with c_y:
+
     y_choices = [a for a in all_axes if a != x_axis]
     prev_y = st.session_state.get("y_axis_selected")
-    if prev_y in y_choices:
-        y_default = y_choices.index(prev_y)
-    else:
-        y_default = 0
-    y_axis = st.selectbox(
-        "**2nd Perturbation (Y-Axis)**",
-        y_choices,
-        index=y_default,
-        key="y_axis_selected",
-    )
+    y_default = y_choices.index(prev_y) if prev_y in y_choices else 0
+    y_axis = st.selectbox("**2nd Perturbation (Y-Axis)**", y_choices, index=y_default, key="y_axis_selected")
 
-#4) Select image class
-with c_class:
     image_class = st.selectbox("**Select Image Class**", IMAGE_CLASSES)
 
+# -------- Prep images --------
 img_dir = os.path.join(IMAGE_ROOT, image_class)
 img_files = sorted(os.listdir(img_dir))
 
-#If user changed class, reset selected image
+# If user changed class, reset selected image
 if st.session_state["selected_class"] != image_class:
     st.session_state["selected_class"] = image_class
     st.session_state["selected_image"] = None
 
-#If no image selected yet, pick the first
+# If no image selected yet, pick the first
 if st.session_state["selected_image"] is None and img_files:
     st.session_state["selected_image"] = img_files[0]
 
-#5) Preview images in class (clickable tiles)
-with c_preview:
-    st.markdown("**Pick an image (click a tile)**")
+# ---------- small CSS helpers ----------
+THUMB = 160   # tile size
+GAP   = 24    # visual gap
+st.markdown(
+    f"""
+    <style>
+      /* constrain preview so it wraps 3 on the first row, 2 on the second */
+      .preview-inner {{
+          max-width: {THUMB*3 + GAP*2 + 16}px;
+          margin: 0 auto;
+          width: 100%;
+      }}
+      /* Run column: header + big square button */
+      .runbox {{ display:flex; flex-direction:column; gap:.5rem; }}
+      .runbox h3 {{ margin: 0; font-weight:700; }}
+      .runbtn > button:first-child {{
+          width: 280px; height: 280px; border-radius: 16px;
+          font-size: 44px; font-weight: 700; letter-spacing:.25px;
+      }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-    display_files = img_files[:5] # adjust how many to show
+# ---------- (2) PREVIEW ----------
+with col_preview:
+    st.markdown("<h3 style='text-align:center;'>Pick an Image</h3>", unsafe_allow_html=True)
+    st.markdown("<div class='preview-inner'>", unsafe_allow_html=True)
+
+    display_files = img_files[:5]  # 3 + 2 layout
     if not display_files:
         st.warning("No images found in this class.")
     else:
         img_paths = [os.path.join(img_dir, f) for f in display_files]
-
-        # Default / restore selection
         current_sel = st.session_state.get("selected_image")
         if (not current_sel) or (current_sel not in display_files):
             current_sel = display_files[0]
             st.session_state["selected_image"] = current_sel
 
-        # --- Make small, uniform square thumbnails ---
-        # Use center-crop to a square, then resize (e.g., 160x160)
-        THUMB = 128 # smaller tiles
+        # square thumbs
         thumbs = []
         for p in img_paths:
             im = Image.open(p).convert("RGB")
-            # Center-crop to square, then resize
-            sq = ImageOps.fit(im, (THUMB, THUMB),
-                              method=Image.Resampling.LANCZOS,
-                              centering=(0.5, 0.5))
-            thumbs.append(sq)
+            thumbs.append(ImageOps.fit(im, (THUMB, THUMB), Image.Resampling.LANCZOS, centering=(0.5, 0.5)))
 
-        # --- Clickable tiles that return the INDEX (not the image) ---
         selected_idx = image_select(
             label="",
             images=thumbs,
             captions=display_files,
-            index=display_files.index(current_sel) if current_sel in display_files else 0,
-            use_container_width=False,
+            index=display_files.index(current_sel),
+            use_container_width=False,          # respects .preview-inner
             key=f"imgsel_{image_class}",
-            return_value="index",  # <-- ensures we get an int
+            return_value="index",
         )
-
-        # Safety: only update if we got a valid index
         if isinstance(selected_idx, int) and 0 <= selected_idx < len(display_files):
             st.session_state["selected_image"] = display_files[selected_idx]
-#6) Run app
-with c_run:
-    # small spacer to push the button down to the image row
-    st.markdown("<div style='height:43px'></div>", unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <style>
-        div.stButton > button:first-child {
-            font-weight: 600;
-            font-size: 16px;
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ---------- (3) RUN + INFO ----------
+with col_run:
+    # header row: title left, info button right
+    header_l, header_r = st.columns([1, 0.3])
+    with header_l:
+        st.markdown("<h3 style='text-align:center;'>Run!</h3>", unsafe_allow_html=True)
+    with header_r:
+        with st.popover("ℹ️"):
+            st.markdown(
+                """
+                **Q&A**
+
+                1. What is **GradCAM**? 
+                    - Uses gradients of last conv layer to make a heatmap where the model "looks."
+                2. What's the difference between the models?
+                    - **ResNet18**: simple/robust; heavier than mobile nets
+                    - **MobileNetV3-Large**: fast/light; lower accuracy
+                    - **EfficientNet-B0**: great accuracy/compute; harder to interpret
+                3. Why these image classes?
+                    - **Airplane**: test orientations
+                    - **Cat**: standard image class
+                    - **Dalmatian**: test black/white patterns
+                    - **Jaguar**: test colored patterns
+                    - **School Bus**: test color + orientation
+                """
+            )
+
+    #Get run button img
+    run_img_path = os.path.join("data", "images", "run_button_pic.png")
+    run_img_raw= Image.open(run_img_path).convert("RGBA")
+    bg = Image.new("RGB", run_img_raw.size, (18, 18, 18))
+    run_img = Image.alpha_composite(bg.convert("RGBA"), run_img_raw).convert("RGB")
+    run_img = ImageOps.fit(run_img, (512, 512),
+                           method=Image.Resampling.LANCZOS,
+                           centering=(0.5, 0.5))
+
+    # use the same widget as previews; 1-tile grid
+    run_choice = image_select(
+        label="",
+        images=[run_img],
+        captions=["Run"],                    # no preselect
+        use_container_width=False,       # respects THUMB
+        key="run_img_tile",
+        return_value="index",
     )
 
-    run_button = st.button("**Run ▶**", use_container_width=True)
+    run_button = (run_choice == 0)
 #############################################################
 #Load image and preprocess
 # Determine what to actually display (frozen state from last Run)
@@ -291,7 +341,7 @@ def get_top_class_idx(model, pil_img):
         t = preprocess(pil_img).unsqueeze(0)
         out = model(t)
         return out.argmax(dim=1).item()
-    
+#############################################################
 #############################################################
 #Run pipeline for model
 results_placeholder = st.empty()
@@ -607,8 +657,6 @@ if Z is not None:
                     label = f"class {idx}"
                 html += f"<p style='margin:0;'>• <b>{label}</b>: {p*100:.3f}% confidence</p>"
 
-            html += "</div>"
-
             st.markdown(html, unsafe_allow_html=True)
             st.session_state["pred_box_html"] = html
 
@@ -623,11 +671,11 @@ if Z is not None:
                     padding: 0.9rem 1.2rem;
                     border-radius: 0.5rem;
                     border: 1px solid #2f3335;
-                    margin-top: 1.25rem;
+                    margin-top: 0rem;
                     width: 100%;
                     text-align: center;
                 ">
-                    <p style="margin:0 0 0.5rem 0; font-weight: 600;">Current point</p>
+                    <p style="margin:0 0 0.5rem 0; font-weight: 600;">Current Point</p>
                     <p style="margin:0;">{last['x_axis']}: <b>{last['x_value']:.3f}</b></p>
                     <p style="margin:0;">{last['y_axis']}: <b>{last['y_value']:.3f}</b></p>
                     <p style="margin:0;">Confidence: <b>{last['confidence']:.3f}</b></p>
