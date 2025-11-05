@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual envs
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+*.code-workspace
+
+# Large/local data & checkpoints
+data/
+checkpoints/
+weights/
+*.pt
+*.pth
