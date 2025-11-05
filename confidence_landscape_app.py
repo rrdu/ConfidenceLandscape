@@ -201,19 +201,20 @@ with col_setup:
 
 # -------- Prep images -------------------------------------------------------------------------------------------------------------------------------------------------------
 #Make image directory
-img_root = IMAGE_ROOT
-img_dir = img_root / CLASS_DIR[image_class]
-if img_dir is None:
-    existing = [p.name for p in root.iterdir() if p.is_dir()] if root.exists() else []
+root = IMAGE_ROOT if isinstance(IMAGE_ROOT, Path) else Path(IMAGE_ROOT)
+img_dir = root / CLASS_DIR[image_class]
+
+if not img_dir.is_dir():
+    import streamlit as st
+    existing = [p.name for p in root.iterdir()] if root.exists() else []
     st.error(
-        "Could not find an image folder for the selected class.\n\n"
-        f"Looked for:\n- " + "\n- ".join(str(c) for c in candidates) +
-        ("\n\nAvailable folders:\n- " + "\n- ".join(existing) if existing else "\n\nNo folders found under "
-         f"`{root}`.")
+        f"Could not find `{img_dir}`.\n\n"
+        f"IMAGE_ROOT resolved to: `{root}`\n"
+        + (f"Available folders:\n- " + "\n- ".join(existing) if existing else "IMAGE_ROOT does not exist.")
     )
     st.stop()
 
-img_files = sorted([f.name for f in img_dir.iterdir() if f.is_file()])
+img_files = sorted([p.name for p in img_dir.iterdir() if p.is_file()])
 
 # If user changed class, reset selected image
 if st.session_state["selected_class"] != image_class:

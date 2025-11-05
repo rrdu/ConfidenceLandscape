@@ -3,7 +3,7 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-IMAGE_ROOT = str(BASE_DIR / "data" / "images")
+IMAGE_ROOT = BASE_DIR / "data" / "images"
 
 #############################################################
 #Models to use
