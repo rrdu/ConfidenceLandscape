@@ -563,7 +563,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st_image_compat(base_img, caption="Base image", width='stretch')
+            st_image_compat(base_img, caption="Base image", stretch=True)
 
         #Fill this only when user clicks
         with grad_col:
@@ -675,7 +675,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st_image_compat(overlaid, caption="GradCAM overlay", width='stretch')
+            st_image_compat(overlaid, caption="GradCAM overlay", stretch=True)
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ---------------------------------------------------------------------------------------------------------------------------
         with preds_placeholder.container():
