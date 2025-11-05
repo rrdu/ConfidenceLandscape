@@ -313,7 +313,7 @@ with col_run:
             )
 
     #Get run button img
-    run_img_path = os.path.join("data", "images", "run_button_pic.png")
+    run_img_path = root / "run_button_pic.png"
     run_img_raw= Image.open(run_img_path).convert("RGBA")
     bg = Image.new("RGB", run_img_raw.size, (18, 18, 18))
     run_img = Image.alpha_composite(bg.convert("RGBA"), run_img_raw).convert("RGB")
