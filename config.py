@@ -18,6 +18,14 @@ IMAGE_CLASSES = [
     "Jaguar",
     "School Bus"
 ]
+
+CLASS_DIR = {
+    "Airplane":   "airplane",
+    "Cat":        "cat",
+    "Dalmatian":  "dalmatian",
+    "Jaguar":     "jaguar",       
+    "School Bus": "school_bus",
+}
 #############################################################
 #Perturbation metrics
 PERTURB_AXES = {

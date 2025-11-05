@@ -22,10 +22,12 @@ from streamlit_plotly_events import plotly_events
 from streamlit_image_select import image_select
 
 from PIL import Image, ImageOps
+from pathlib import Path
 
 from config import(
     MODELS,
     IMAGE_CLASSES,
+    CLASS_DIR,
     IMAGE_ROOT,
     PERTURB_AXES
 )
@@ -48,7 +50,8 @@ try:
 except Exception:
     # fallback: leave as None
     IMAGENET_LABELS = None
-#############################################################
+#######################################################################################################################################################################################
+#Session states
 if "selected_image" not in st.session_state:
     st.session_state['selected_image'] = None
 if "selected_class" not in st.session_state:
@@ -73,7 +76,7 @@ if "active_y" not in st.session_state:
     st.session_state["active_y"] = None
 if "pred_box_html" not in st.session_state:
     st.session_state["pred_box_html"] = None
-#############################################################
+#######################################################################################################################################################################################
 #Image select helper
 def image_select_compat(*, stretch: bool, **kwargs):
     """
@@ -87,8 +90,7 @@ def image_select_compat(*, stretch: bool, **kwargs):
     else:                  # current versions
         kwargs["use_container_width"] = stretch
     return image_select(**kwargs)
-#############################################################
-#Initialize page
+########################################################################################################################################################################################Initialize page
 st.set_page_config(page_title='Confidence Landscape', layout='wide')
 
 #Centering markdown styles
@@ -144,7 +146,7 @@ st.markdown(
 )
 
 st.title('**Confidence Landscape**')
-#############################################################
+#######################################################################################################################################################################################
 # ---------- one-time welcome message ----------
 if "show_welcome" not in st.session_state:
     st.session_state["show_welcome"] = True
@@ -175,14 +177,14 @@ if st.session_state["show_welcome"]:
     #    if st.button("Close"):
     #        st.session_state["show_welcome"] = False
     st.markdown("</div>", unsafe_allow_html=True)
-#############################################################
-# ------------------ Controls (left) + Preview (right) ------------------
+#######################################################################################################################################################################################
+# ------------------ Controls (left) + Preview (right) -----------------------------------------------------------------------------------------------------------------------------
 #Spacers
 spL, col_setup, col_preview, col_run, spR = st.columns(
     [0.6, 1.0, 1.4, 0.6, 0.6], vertical_alignment="top"
 )
 
-# ---------- (1) SETUP ----------
+# ---------- (1) SETUP -------------------------------------------------------------------------------------------------------------------------------------------------------
 with col_setup:
     st.markdown("<h3 style='text-align:center;'>Setup</h3>", unsafe_allow_html=True)
     model_name = st.selectbox("**Select Model**", MODELS)
@@ -197,9 +199,31 @@ with col_setup:
 
     image_class = st.selectbox("**Select Image Class**", IMAGE_CLASSES)
 
-# -------- Prep images --------
-img_dir = os.path.join(IMAGE_ROOT, image_class)
-img_files = sorted(os.listdir(img_dir))
+# -------- Prep images -------------------------------------------------------------------------------------------------------------------------------------------------------
+#Make image directory
+root = Path(IMAGE_ROOT)
+intended = root / CLASS_DIR[image_class]
+
+candidates = [
+    intended,
+    root / image_class,                            # exact display name
+    root / image_class.replace(" ", "_"),          # underscores for spaces
+    root / image_class.lower(),
+    root / image_class.lower().replace(" ", "_"),
+]
+
+img_dir = next((p for p in candidates if p.is_dir()), None)
+if img_dir is None:
+    existing = [p.name for p in root.iterdir() if p.is_dir()] if root.exists() else []
+    st.error(
+        "Could not find an image folder for the selected class.\n\n"
+        f"Looked for:\n- " + "\n- ".join(str(c) for c in candidates) +
+        ("\n\nAvailable folders:\n- " + "\n- ".join(existing) if existing else "\n\nNo folders found under "
+         f"`{root}`.")
+    )
+    st.stop()
+
+img_files = sorted([f.name for f in img_dir.iterdir() if f.is_file()])
 
 # If user changed class, reset selected image
 if st.session_state["selected_class"] != image_class:
@@ -210,7 +234,7 @@ if st.session_state["selected_class"] != image_class:
 if st.session_state["selected_image"] is None and img_files:
     st.session_state["selected_image"] = img_files[0]
 
-# ---------- small CSS helpers ----------
+# ---------- small CSS helpers -------------------------------------------------------------------------------------------------------------------------------------------------------
 THUMB = 160   # tile size
 GAP   = 24    # visual gap
 st.markdown(
@@ -234,7 +258,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------- (2) PREVIEW ----------
+# ---------- (2) PREVIEW -------------------------------------------------------------------------------------------------------------------------------------------------------
 with col_preview:
     st.markdown("<h3 style='text-align:center;'>Pick an Image</h3>", unsafe_allow_html=True)
     st.markdown("<div class='preview-inner'>", unsafe_allow_html=True)
@@ -270,7 +294,7 @@ with col_preview:
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-# ---------- (3) RUN + INFO ----------
+# ---------- (3) RUN + INFO -------------------------------------------------------------------------------------------------------------------------------------------------------
 with col_run:
     # header row: title left, info button right
     header_l, header_r = st.columns([1, 0.3])
@@ -318,7 +342,7 @@ with col_run:
     )
 
     run_button = (run_choice == 0)
-#############################################################
+#######################################################################################################################################################################################
 #Load image and preprocess
 # Determine what to actually display (frozen state from last Run)
 disp_class = st.session_state.get("active_class") or image_class
@@ -333,22 +357,21 @@ img_path = os.path.join(img_dir, disp_image)
 base_img = Image.open(img_path).convert("RGB")
 image_name = st.session_state["selected_image"]
 
-#Preprocess image for model
+#Preprocess image for model-------------------------------------------------------------------------------------------------------------------------------------------------------
 preprocess = T.Compose([
     T.Resize((224, 224)),
     T.ToTensor(),
     T.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225]),
 ])
 
-#############################################################
-#Setup plot
+#Setup plot-------------------------------------------------------------------------------------------------------------------------------------------------------
 x_cfg = PERTURB_AXES[disp_x]
 y_cfg = PERTURB_AXES[disp_y]
 
 x_vals = np.linspace(x_cfg["min"], x_cfg["max"], x_cfg["steps"])
 y_vals = np.linspace(y_cfg["min"], y_cfg["max"], y_cfg["steps"])
-#############################################################
-#Get top model prediction
+
+#Get top model prediction-------------------------------------------------------------------------------------------------------------------------------------------------------
 Z = None
 model = None
 class_idx = None
@@ -358,8 +381,8 @@ def get_top_class_idx(model, pil_img):
         t = preprocess(pil_img).unsqueeze(0)
         out = model(t)
         return out.argmax(dim=1).item()
-#############################################################
-#############################################################
+
+#######################################################################################################################################################################################
 #Run pipeline for model
 results_placeholder = st.empty()
 
@@ -438,12 +461,12 @@ if run_button:
             st.session_state["class_idx"] = class_idx
             st.session_state["pred_box_html"] = None
             st.session_state["last_click"] = None
-#############################################################
+#######################################################################################################################################################################################
 #Find confidence
 def find_nearest_index(arr, value):
     arr = np.asarray(arr)
     return (np.abs(arr - value)).argmin()
-#############################################################
+#######################################################################################################################################################################################
 #Find target layer for GradCAM
 def pick_target_layer(model, model_name:str):
     '''Pick model layer to hook GradCAM to'''
@@ -466,7 +489,7 @@ def pick_target_layer(model, model_name:str):
         return model.layer4[-1]
     
     raise ValueError(f"Don't know how to pick target layer for model '{model_name}'")
-#############################################################
+#######################################################################################################################################################################################
 def get_imagenet_labels_for_model(model_name: str):
     name = model_name.lower()
     if "resnet18" in name:
@@ -477,10 +500,10 @@ def get_imagenet_labels_for_model(model_name: str):
         return EfficientNet_B0_Weights.IMAGENET1K_V1.meta["categories"]
     # fallback: 0..999
     return [f"class {i}" for i in range(1000)]
-#############################################################
-# -------------------------------------------------------
+#######################################################################################################################################################################################
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 # DISPLAY / INTERACTION AFTER THE SURFACE EXISTS
-# -------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 Z = st.session_state.get("Z")
 model = st.session_state.get("model_obj")
 class_idx = st.session_state.get("class_idx")
@@ -490,7 +513,7 @@ if Z is not None:
     # main 2-column layout: plot on left, images/preds on right
     left, right = st.columns([2.2, 1], vertical_alignment="top")
 
-    # ================= LEFT: 3D SURFACE =================
+    # ================= LEFT: 3D SURFACE =======================================================================================================================
     with left:
         st.markdown(
             f"<h3 style='text-align:center;'>{disp_model_name} Confidence Landscape: <b>{disp_x}</b> vs. <b>{disp_y}</b> vs. Confidence</h3>",
@@ -517,7 +540,7 @@ if Z is not None:
         if (not clicked_points) and (st.session_state.get("last_click") is None):
             st.info("Click the surface to see point details.")
 
-    # ================= RIGHT: IMAGES + LEGEND + PREDS =================
+    # ================= RIGHT: IMAGES + LEGEND + PREDS =======================================================================================================================
     with right:
         st.markdown(
             "<h3 style='text-align:center; font-weight:700;'>Base Image vs. GradCAM</h3>",
@@ -582,7 +605,7 @@ if Z is not None:
                 unsafe_allow_html=True,
             )
 
-    # ================= HANDLE CLICK =================
+    # ================= HANDLE CLICK =======================================================================================================================
     if clicked_points:
         pt = clicked_points[0]
         clicked_x = float(pt["x"])
@@ -602,7 +625,7 @@ if Z is not None:
             "confidence": clicked_conf,
         }
 
-        # ---------- GRADCAM: render into placeholder ----------
+        # ---------- GRADCAM: render into placeholder -----------------------------------------------------------------------------------------------------------------------
         with grad_placeholder.container():
             with st.spinner("Running GradCAM..."):
                 x_key = disp_x.lower()
@@ -642,7 +665,7 @@ if Z is not None:
 
             st.image(overlaid, caption="GradCAM overlay", width='stretch')
 
-        # ---------- TOP-3 PREDICTIONS: render into placeholder ----------
+        # ---------- TOP-3 PREDICTIONS: render into placeholder ---------------------------------------------------------------------------------------------------------------------------
         with preds_placeholder.container():
             with torch.no_grad():
                 logits = model(inp)
@@ -677,7 +700,7 @@ if Z is not None:
             st.markdown(html, unsafe_allow_html=True)
             st.session_state["pred_box_html"] = html
 
-    # ================= CURRENT POINT CARD (CENTERED) =================
+    # ================= CURRENT POINT CARD (CENTERED) =======================================================================================================================
     last = st.session_state.get("last_click")
     if last:
         with left:  
