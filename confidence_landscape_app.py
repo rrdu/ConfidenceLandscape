@@ -201,18 +201,8 @@ with col_setup:
 
 # -------- Prep images -------------------------------------------------------------------------------------------------------------------------------------------------------
 #Make image directory
-root = Path(IMAGE_ROOT)
-intended = root / CLASS_DIR[image_class]
-
-candidates = [
-    intended,
-    root / image_class,                            # exact display name
-    root / image_class.replace(" ", "_"),          # underscores for spaces
-    root / image_class.lower(),
-    root / image_class.lower().replace(" ", "_"),
-]
-
-img_dir = next((p for p in candidates if p.is_dir()), None)
+img_root = IMAGE_ROOT
+img_dir = img_root / CLASS_DIR[image_class]
 if img_dir is None:
     existing = [p.name for p in root.iterdir() if p.is_dir()] if root.exists() else []
     st.error(
