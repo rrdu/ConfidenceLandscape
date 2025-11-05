@@ -90,6 +90,27 @@ def image_select_compat(*, stretch: bool, **kwargs):
     else:                  # current versions
         kwargs["use_container_width"] = stretch
     return image_select(**kwargs)
+#######################################################################################################################################################################################
+def st_image_compat(image, *, stretch: bool = True, width_px: int | None = None, **kwargs):
+    """
+    Compat wrapper for st.image:
+      - If width_px is given -> use precise pixel width.
+      - Else -> use_container_width = stretch.
+    Accepts any extra st.image kwargs via **kwargs (e.g., caption, clamp, channels).
+    """
+    # In case Streamlit ever changes the param names, be defensive:
+    sig = inspect.signature(st.image)
+    params = sig.parameters
+
+    if width_px is not None and isinstance(width_px, int):
+        # Use explicit pixel width
+        return st.image(image, width=width_px, **kwargs)
+
+    # Fallback to container width behavior
+    if "use_container_width" in params:
+        return st.image(image, use_container_width=bool(stretch), **kwargs)
+
+    return st.image(image, **kwargs)
 ########################################################################################################################################################################################Initialize page
 st.set_page_config(page_title='Confidence Landscape', layout='wide')
 
@@ -542,7 +563,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st.image(base_img, caption="Base image", width='stretch')
+            st_image_compat(base_img, caption="Base image", width='stretch')
 
         #Fill this only when user clicks
         with grad_col:
@@ -654,7 +675,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st.image(overlaid, caption="GradCAM overlay", width='stretch')
+            st_image_compat(overlaid, caption="GradCAM overlay", width='stretch')
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ---------------------------------------------------------------------------------------------------------------------------
         with preds_placeholder.container():
