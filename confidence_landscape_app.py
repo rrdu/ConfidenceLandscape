@@ -343,9 +343,9 @@ disp_x = st.session_state.get("active_x") or x_axis
 disp_y = st.session_state.get("active_y") or y_axis
 
 # Load corresponding image
-img_dir = os.path.join(IMAGE_ROOT, disp_class)
-img_path = os.path.join(img_dir, disp_image)
-base_img = Image.open(img_path).convert("RGB")
+img_dir = IMAGE_ROOT / CLASS_DIR[disp_class]
+img_path = img_dir /disp_image
+base_img = Image.open(str(img_path)).convert("RGB")
 image_name = st.session_state["selected_image"]
 
 #Preprocess image for model-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -393,9 +393,9 @@ if run_button:
     active_y = st.session_state["active_y"]
 
     #Reload image + axis grids for run
-    img_dir = os.path.join(IMAGE_ROOT, active_class)
-    img_path = os.path.join(img_dir, active_image)
-    base_img = Image.open(img_path).convert("RGB")
+    img_dir = IMAGE_ROOT / CLASS_DIR[active_class]
+    img_path = img_dir /active_image
+    base_img = Image.open(str(img_path)).convert("RGB")
 
     x_cfg = PERTURB_AXES[active_x]
     y_cfg = PERTURB_AXES[active_y]
