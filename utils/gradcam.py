@@ -13,13 +13,13 @@ class GradCAM:
         self.fmap = None
         self.grad = None
         target_layer.register_forward_hook(self._forward_hook)
-        target_layer.register_backward_hook(self._backward_hook)
+        target_layer.register_full_backward_hook(self._backward_hook)
 
         #Save forward features
         target_layer.register_forward_hook(self._forward_hook)
 
         #Save backward grads
-        target_layer.register_backward_hook(self._backward_hook)
+        target_layer.register_full_backward_hook(self._backward_hook)
     ########################################################
     def _forward_hook(self, m, input, output):
         self.fmap = output

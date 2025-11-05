@@ -9,6 +9,7 @@ import numpy as np
 import torch
 import torchvision.transforms as T
 import torchvision.transforms.functional as F
+import inspect
 
 from torchvision.models import (
     ResNet18_Weights,
@@ -72,6 +73,20 @@ if "active_y" not in st.session_state:
     st.session_state["active_y"] = None
 if "pred_box_html" not in st.session_state:
     st.session_state["pred_box_html"] = None
+#############################################################
+#Image select helper
+def image_select_compat(*, stretch: bool, **kwargs):
+    """
+    Calls streamlit_image_select.image_select with the right sizing arg.
+    stretch=True  -> width='stretch'  or use_container_width=True
+    stretch=False -> width='content'  or use_container_width=False
+    """
+    params = inspect.signature(image_select).parameters
+    if "width" in params:  # newer versions (once supported)
+        kwargs["width"] = "stretch" if stretch else "content"
+    else:                  # current versions
+        kwargs["use_container_width"] = stretch
+    return image_select(**kwargs)
 #############################################################
 #Initialize page
 st.set_page_config(page_title='Confidence Landscape', layout='wide')
@@ -240,12 +255,13 @@ with col_preview:
             im = Image.open(p).convert("RGB")
             thumbs.append(ImageOps.fit(im, (THUMB, THUMB), Image.Resampling.LANCZOS, centering=(0.5, 0.5)))
 
-        selected_idx = image_select(
+        selected_idx = image_select_compat(
+            stretch=False,
             label="",
             images=thumbs,
             captions=display_files,
             index=display_files.index(current_sel),
-            use_container_width=False,          # respects .preview-inner
+            #width='content',          # respects .preview-inner
             key=f"imgsel_{image_class}",
             return_value="index",
         )
@@ -291,11 +307,12 @@ with col_run:
                            centering=(0.5, 0.5))
 
     # use the same widget as previews; 1-tile grid
-    run_choice = image_select(
+    run_choice = image_select_compat(
+        stretch=False,
         label="",
         images=[run_img],
         captions=["Run"],                    # no preselect
-        use_container_width=False,       # respects THUMB
+        #width='content',       # respects THUMB
         key="run_img_tile",
         return_value="index",
     )
@@ -511,7 +528,7 @@ if Z is not None:
         img_col, grad_col = st.columns([1, 1], vertical_alignment="top")
 
         with img_col:
-            st.image(base_img, caption="Base image", use_container_width=True)
+            st.image(base_img, caption="Base image", width='stretch')
 
         #Fill this only when user clicks
         with grad_col:
@@ -623,7 +640,7 @@ if Z is not None:
                     alpha=0.6,
                 )
 
-            st.image(overlaid, caption="GradCAM overlay", use_container_width=True)
+            st.image(overlaid, caption="GradCAM overlay", width='stretch')
 
         # ---------- TOP-3 PREDICTIONS: render into placeholder ----------
         with preds_placeholder.container():
