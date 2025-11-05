@@ -1,11 +1,13 @@
-streamlit==1.50.0
-plotly==5.22.0
-numpy==1.26.4
-pandas==2.2.2
-pillow==10.4.0
-opencv-python-headless==4.11.0.86
-matplotlib==3.9.2
-tqdm==4.66.5
-torchinfo==1.8.0
-streamlit-plotly-events==0.0.6
-streamlit-image-select==0.6.0
+streamlit>=1.36
+plotly>=5.20
+streamlit-image-select>=0.6.0
+streamlit-plotly-events>=0.0.6
+Pillow>=10.0
+numpy>=1.26
+opencv-python-headless>=4.10
+scipy>=1.11
+
+# PyTorch (CPU wheels)
+torch==2.4.1
+torchvision==0.19.1
+--extra-index-url https://download.pytorch.org/whl/cpu
