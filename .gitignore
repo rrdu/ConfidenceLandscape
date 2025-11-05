@@ -12,7 +12,6 @@ venv/
 *.code-workspace
 
 # Large/local data & checkpoints
-data/
 checkpoints/
 weights/
 *.pt
