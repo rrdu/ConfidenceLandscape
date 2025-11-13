@@ -668,7 +668,7 @@ if Z is not None:
                 inp = preprocess(pert).unsqueeze(0)
                 cam = gc.generate(inp, class_idx)
 
-                # 5) overlay (you already wrote gradcam_overlay_cv2)
+                # 5) overlay 
                 overlaid = gradcam_overlay_cv2(
                     pert.resize((224, 224)).convert("L").convert("RGB"),
                     cam,
